@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Boat Race</title>
+    <style type="text/css">
+        body {
+            overflow:hidden;
+        }
+        div{
+            text-align:center;
+            border:0px solid silver;
+            display: table-cell;
+            vertical-align:middle;
+            color:#FFFFFF;
+            background-color:#000000;
+            font-weight:bold;
+            font-family:Verdana, Geneva, sans-serif;
+            font-size:40px;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+
+<script type="text/javascript" src="http://d3lp1msu2r81bx.cloudfront.net/kjs/js/lib/kinetic-v5.0.1.min.js"></script>
+<script type="text/javascript" src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
+<script type="text/javascript">
+
+    window.requestAnimFrame = (function (callback) {
+        return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function (callback) {
+            window.setTimeout(callback, 1000 / 60);
+        };
+    })();
+    stageWidth = 1280;
+    stageHeight = 720;
+    var stage = new Kinetic.Stage({
+        container: 'container',
+        width: stageWidth,
+        height: stageHeight
+    });
+    var layer = new Kinetic.Layer();
+
+    var numBoats = 5;
+    var boatDimension = 20;
+    var border = boatDimension * 1.5;
+    var numMinorCorners = 5;
+
+    var path = [];
+    var boatPaths = [];
+
+    for (var boatNumber = 0; boatNumber < numBoats; boatNumber++) {
+        path.push([
+            stageWidth / 2 - boatDimension / 2, stageHeight - border - (boatNumber - 0.5) * boatDimension]);
+
+        var firstMajorCorner = [stageWidth - border - (numBoats - (boatNumber+1)) * boatDimension / 3, path[boatNumber][1]];
+
+        path[boatNumber].push.apply(path[boatNumber], firstMajorCorner);
+
+        var x = firstMajorCorner[0];
+        var y = firstMajorCorner[1];
+
+        var secondMajorCorner = [stageWidth / 2, border + (numBoats - (boatNumber+1)) * boatDimension / 3];
+
+        var xInterval = (x - secondMajorCorner[0]) / numMinorCorners;
+        var yInterval = (y - secondMajorCorner[1]) / numMinorCorners;
+
+        while (x > secondMajorCorner[0] && y > secondMajorCorner[1]) {
+            y -= yInterval;
+            path[boatNumber].push.apply(path[boatNumber], [x, y]);
+            x -= xInterval;
+            path[boatNumber].push.apply(path[boatNumber], [x, y]);
+        }
+
+        var thirdMajorCorner = [border + (numBoats - (boatNumber+1)) * boatDimension / 3, path[boatNumber][1]];
+
+        while (x > thirdMajorCorner[0] && y < thirdMajorCorner[1]) {
+            x -= xInterval;
+            path[boatNumber].push.apply(path[boatNumber], [x, y]);
+            y += yInterval;
+            path[boatNumber].push.apply(path[boatNumber], [x, y]);
+        }
+        path[boatNumber].push.apply(path[boatNumber], [path[boatNumber][0] + boatDimension / 2, path[boatNumber][1]]);
+
+
+        boatPaths.push(new Kinetic.Line({
+            points: path[boatNumber],
+            stroke: 'red',
+            strokeWidth: 2,
+            lineCap: 'round',
+            lineJoin: 'round'
+        }));
+
+    }
+
+    var boats = [];
+
+    var colors = ['purple', 'yellow', 'blue', 'red', 'green'];
+
+    var boat = function(originalLocation, dimension, color)
+    {
+        var group = new Kinetic.Group({
+            x: originalLocation[0],
+            y: originalLocation[1],
+            offset: {
+                x: dimension / 2,
+                y: dimension / 2
+            }
+        });
+        bowCalc = dimension * 4/5;
+        var bow = new Kinetic.Line({
+            points: [0, bowCalc, 0, dimension, bowCalc, dimension, dimension, bowCalc],
+            closed: true,
+            fill: color
+        });
+        group.add(bow);
+        var sail = new Kinetic.Line({
+            points: [0, 0, 0, bowCalc, bowCalc, bowCalc],
+            closed: true,
+            fill: 'white',
+            stroke: color,
+            strokeWidth: dimension/20
+        });
+        group.add(sail);
+        return group
+
+    }
+
+    for (var b = 0; b < numBoats; b++) {
+        boats.push(boat([path[b][0],path[b][1]], boatDimension, colors[b]));
+    }
+
+    var boatProgresses = [];
+    for (var b = 0; b < boatPaths.length; b++) {
+        //layer.add(boatPaths[b]);
+        layer.add(boats[b]);
+        boatProgresses.push(0)
+    }
+    var buoyImage = new Image();
+
+    buoyImage.src = './ring-buoy.jpg'
+
+    stage.add(layer);
+
+    //Easings to make things look more exciting
+    var easings = [
+        'EaseIn',
+        'EaseOut',
+        'EaseInOut'];
+
+    var duration = function(progressIndex, lastIndex)
+    {
+        if ((progressIndex*2+1 >= lastIndex) || (progressIndex == 1))
+        {
+            return 5 + Math.random();
+        }
+        else
+        {
+            return 1 + Math.random()*.5;
+        }
+    }
+
+    var placing = [];
+
+    function playNextTween(boatNumber) {
+        boatProgresses[boatNumber]++;
+        progress = boatProgresses[boatNumber];
+        if (progress*2 < path[boatNumber].length)
+        {
+            var tween = new Kinetic.Tween({
+                node: boats[boatNumber],
+                duration: duration(progress, path[boatNumber].length-1),
+                x: path[boatNumber][progress * 2],
+                y: path[boatNumber][progress * 2 + 1],
+                easing: Kinetic.Easings[easings[Math.floor((Math.random()*3)+1)]],
+                onFinish: function () {
+                    playNextTween(boatNumber);
+                }
+            });
+            tween.play();
+        }
+        else
+        {
+            placingImage = boats[boatNumber].clone({
+                x: stageWidth/2,
+                y: stageHeight/2 + placing.length * boatDimension + boatDimension});
+            placing.push(placingImage);
+            layer.add(placing[placing.length-1]);
+        }
+    }
+
+    buoyImage.onload = function() {
+        var buoy1 = new Kinetic.Image({
+            x: path[path.length-1][0],
+            y: path[path.length-1][1] - boatDimension*1.5,
+            image: buoyImage,
+            width: boatDimension*2,
+            height: boatDimension*2,
+            offset: {
+                x: boatDimension,
+                y: boatDimension
+            }
+        });
+        layer.add(buoy1);
+
+        layer.add(buoy1.clone({
+            x: stageWidth - border - numBoats * boatDimension - 20
+        }));
+        layer.add(buoy1.clone({
+            y: border + numBoats * boatDimension/2
+        }));
+        layer.add(buoy1.clone({
+            x: border + numBoats * boatDimension + 20
+        }));
+
+        finishLineX = path[0][0] + boatDimension;
+
+        var finishLine = new Kinetic.Line({
+            points: [finishLineX, stageHeight, finishLineX, stageHeight - border - boatDimension* numBoats],
+            stroke: 'white',
+            strokeWidth: 2,
+            lineCap: 'round',
+            lineJoin: 'round'
+        });
+        layer.add(finishLine);
+
+        for (var b = 0; b < boats.length; b++) {
+            playNextTween(b);
+        }
+    };
+
+</script>
+
+</body>
+</html>
