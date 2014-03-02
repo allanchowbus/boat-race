@@ -46,6 +46,7 @@
     var numMinorCorners = 5;
 
     var path = [];
+    var rotationsScales =[];
     var boatPaths = [];
 
     for (var boatNumber = 0; boatNumber < numBoats; boatNumber++) {
@@ -55,6 +56,7 @@
         var firstMajorCorner = [stageWidth - border - (numBoats - (boatNumber+1)) * boatDimension / 3, path[boatNumber][1]];
 
         path[boatNumber].push.apply(path[boatNumber], firstMajorCorner);
+        rotationsScales.push({rotate: -90,scale: {x: 1, y: -1}});
 
         var x = firstMajorCorner[0];
         var y = firstMajorCorner[1];
@@ -64,23 +66,31 @@
         var xInterval = (x - secondMajorCorner[0]) / numMinorCorners;
         var yInterval = (y - secondMajorCorner[1]) / numMinorCorners;
 
+
         while (x > secondMajorCorner[0] && y > secondMajorCorner[1]) {
             y -= yInterval;
             path[boatNumber].push.apply(path[boatNumber], [x, y]);
+            rotationsScales.push({rotate: -90});
+            rotationsScales.push({rotate: 90});
             x -= xInterval;
             path[boatNumber].push.apply(path[boatNumber], [x, y]);
         }
-
         var thirdMajorCorner = [border + (numBoats - (boatNumber+1)) * boatDimension / 3, path[boatNumber][1]];
+        rotationsScales[rotationsScales.length-1]={};
+
 
         while (x > thirdMajorCorner[0] && y < thirdMajorCorner[1]) {
+
             x -= xInterval;
             path[boatNumber].push.apply(path[boatNumber], [x, y]);
+
+            rotationsScales.push({rotate: -90});
+            rotationsScales.push({rotate: 90});
             y += yInterval;
             path[boatNumber].push.apply(path[boatNumber], [x, y]);
         }
         path[boatNumber].push.apply(path[boatNumber], [path[boatNumber][0] + boatDimension / 2, path[boatNumber][1]]);
-
+        rotationsScales[rotationsScales.length-1] = ({rotate: 90, scale: {x: -1, y: -1}});
 
         boatPaths.push(new Kinetic.Line({
             points: path[boatNumber],
@@ -166,11 +176,28 @@
         progress = boatProgresses[boatNumber];
         if (progress*2 < path[boatNumber].length)
         {
+            var boat = boats[boatNumber]
+            var nextCorner = [path[boatNumber][progress * 2], path[boatNumber][progress * 2 + 1]];
+
+            if (progress > 1)
+            {
+                if ("rotate" in rotationsScales[progress-2])
+                {
+                    boat.rotate(rotationsScales[progress-2].rotate);
+                }
+                if ("scale" in rotationsScales[progress-2])
+                {
+                    boat.scale({x: rotationsScales[progress-2].scale.x,y: rotationsScales[progress-2].scale.y} );
+                    console.log(progress-2);
+
+                }
+
+            }
             var tween = new Kinetic.Tween({
-                node: boats[boatNumber],
+                node: boat,
                 duration: duration(progress, path[boatNumber].length-1),
-                x: path[boatNumber][progress * 2],
-                y: path[boatNumber][progress * 2 + 1],
+                x: nextCorner[0],
+                y: nextCorner[1],
                 easing: Kinetic.Easings[easings[Math.floor((Math.random()*3)+1)]],
                 onFinish: function () {
                     playNextTween(boatNumber);
