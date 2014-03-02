@@ -31,8 +31,8 @@
             window.setTimeout(callback, 1000 / 60);
         };
     })();
-    stageWidth = 1280;
-    stageHeight = 720;
+    stageWidth = window.innerWidth;
+    stageHeight = window.innerHeight;
     var stage = new Kinetic.Stage({
         container: 'container',
         width: stageWidth,
@@ -41,8 +41,8 @@
     var layer = new Kinetic.Layer();
 
     var numBoats = 5;
-    var boatDimension = 20;
-    var border = boatDimension * 1.5;
+    var boatDimension = stageHeight / 40;
+    var border = boatDimension * 2;
     var numMinorCorners = 5;
 
     var path = [];
